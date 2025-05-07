@@ -6,12 +6,10 @@ from sqlalchemy.orm import sessionmaker, Session, relationship
 from passlib.context import CryptContext
 from fastapi.middleware.cors import CORSMiddleware
 
+# SQLite-compatible DB setup for Render
 DATABASE_URL = "sqlite:///./carbon_tracker.db"
-
 connect_args = {"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
 engine = create_engine(DATABASE_URL, connect_args=connect_args)
-
-engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
@@ -38,8 +36,10 @@ class Transport(Base):
 
 Base.metadata.create_all(bind=engine)
 
+# FastAPI app instance
 app = FastAPI()
 
+# CORS middleware for frontend compatibility
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  
@@ -48,6 +48,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Schemas
 class SignupRequest(BaseModel):
     name: str
     email: EmailStr
@@ -63,6 +64,7 @@ class TransportData(BaseModel):
     distance: int
     carbon_emission: float
 
+# Dependency
 def get_db():
     db = SessionLocal()
     try:
@@ -70,6 +72,7 @@ def get_db():
     finally:
         db.close()
 
+# Endpoints
 @app.post("/signup")
 def signup(user: SignupRequest, db: Session = Depends(get_db)):
     if not user.name.strip() or not user.email.strip() or not user.password.strip():
@@ -110,7 +113,6 @@ def save_transport(data: TransportData, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Transport data saved successfully"}
 
-# New API: Fetch total carbon emissions per user
 @app.get("/transport/emissions/{user_id}")
 def get_transport_emissions(user_id: int, db: Session = Depends(get_db)):
     emissions = db.query(
